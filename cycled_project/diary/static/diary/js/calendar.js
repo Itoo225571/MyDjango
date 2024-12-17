@@ -209,15 +209,15 @@ document.addEventListener('DOMContentLoaded', function() {
 			`;
 			$frontContent.find('.diary-content').html(diaryContentHtml);
 			// jQueryでラジオボタンの変更イベントを監視し、画像を更新
-			$frontContent.find('.diary-location-radiobutton').on('change', function() {
-				if ($(this).is(':checked')) {
-					// 親要素の中にある隠しフィールドから画像のURLを取得
-					const newImageSrc = $(this).closest('.diary-location-item').find('.location-img-url').val();
-					$frontContent.find('.diary-image').fadeOut(500, function() { // フェードアウト
-						$(this).attr('src', newImageSrc).fadeIn(500); // srcを更新し、フェードイン
-					});
-				}
-			});
+			// $frontContent.find('.diary-location-radiobutton').on('change', function() {
+			// 	if ($(this).is(':checked')) {
+			// 		// 親要素の中にある隠しフィールドから画像のURLを取得
+			// 		const newImageSrc = $(this).closest('.diary-location-item').find('.location-img-url').val();
+			// 		$frontContent.find('.diary-image').fadeOut(500, function() { // フェードアウト
+			// 			$(this).attr('src', newImageSrc).fadeIn(500); // srcを更新し、フェードイン
+			// 		});
+			// 	}
+			// });
 			$frontContent.find('.button-to-edit').off('click').on('click', function() {
 				const editContent = this.getAttribute('data-edit-content');
 				limit_display(editContent);
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		}
 		function initDiaryEdit(event_calendar,diary) {
 			const $backContent = $('#diaryModal').find('.modal-content.flip-back');
-			$backContent.find('.diary-image').css({'transform': `rotate(0deg)`,});	//角度を初期化
+			// $backContent.find('.diary-image').css({'transform': `rotate(0deg)`,});	//角度を初期化
 
 			$backContent.find('.modal-title').html(`<span id="selectedDate">${formatDateJapanese(diary.date)}</span>`);
 			var locations = diary.locations;
@@ -269,7 +269,8 @@ document.addEventListener('DOMContentLoaded', function() {
 				location_base.find('.location-label').html(`<text>${location.label}</text>`);
 				if (location.is_thumbnail) {
 					location_base.find('.diary-location-radiobutton').prop('checked', true);
-					$backContent.find('.diary-image').attr('src', location.image);
+					// $backContent.find('.diary-image').attr('src', location.image);
+					initCanvasRotation(location.image);
 				}
 
 				diaryEditHtml += location_base.html().replace(/__prefix__/g, `${index}`);
@@ -310,27 +311,18 @@ document.addEventListener('DOMContentLoaded', function() {
 				// 親要素の中にある隠しフィールドから画像のURLを取得
 				const newImageSrc = $checkedLocation.find('.location-img-url').val();
 
-				var $img = $backContent.find('.diary-image')
-				$img.css({'transition': 'opacity 0.3s ease'}).css('opacity', 0); // 透明にする（スペースは保持）
-				setTimeout(function(){
-					$img.css({'transform': `rotate(${angle}deg)`,});
-					$backContent.find('.diary-image').attr('src', newImageSrc);					
-				},100);
-				setTimeout(function(){
-					$img.css('opacity', 1); // srcを更新し、フェードイン
-					$img.css({'transition': 'transform 0.5s ease'})
-				},500);
+				initCanvasRotation(newImageSrc,angle);
 			});
-			$backContent.find('.diary-img-rotate-button').off('click').on('click', function() {
-                var $checkedLocation = $('.diary-location-radiobutton:checked').closest('.diary-location-item');
+			// $backContent.find('.diary-img-rotate-button').off('click').on('click', function() {
+            //     var $checkedLocation = $('.diary-location-radiobutton:checked').closest('.diary-location-item');
 
-                var img = $backContent.find('.diary-image');
-                var $angle = $checkedLocation.find('[id*="rotate_angle"]');
-                var angle = parseInt($angle.val(), 10);
-                angle += 90; // ボタンがクリックされるたびに90度回転
-                img.css({'transform': `rotate(${angle}deg)`,}); // CSSのtransformを更新
-                $angle.val(angle);
-            });
+            //     var img = $backContent.find('.diary-image');
+            //     var $angle = $checkedLocation.find('[id*="rotate_angle"]');
+            //     var angle = parseInt($angle.val(), 10);
+            //     angle += 90; // ボタンがクリックされるたびに90度回転
+            //     img.css({'transform': `rotate(${angle}deg)`,}); // CSSのtransformを更新
+            //     $angle.val(angle);
+            // });
 			$backContent.find('.button-cancel').off('click').on('click', function() {
 				flip_card(this);
 			});
@@ -372,6 +364,53 @@ document.addEventListener('DOMContentLoaded', function() {
 					console.log("AJAXリクエストが失敗しました。");
 				})
 			});
+			function initCanvasRotation(imageSrc,rotationAngle=0) {
+				const canvas = $backContent.find('#diaryImageCanvas')[0];
+				const ctx = canvas.getContext('2d');
+			
+				// 画像をロードして描画
+				const image = new Image();
+				image.src = imageSrc;
+			
+				image.onload = () => {
+					drawImageWithRotation();
+				};
+			
+				// 回転描画関数
+				function drawImageWithRotation() {
+					// 回転後のCanvasのサイズを設定
+					const diagonal = Math.sqrt(image.width ** 2 + image.height ** 2);
+					canvas.width = diagonal;
+					canvas.height = diagonal;
+				
+					// Canvasのクリア
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+				
+					// 回転の基準点を中心に設定
+					ctx.save(); // 現在の状態を保存
+					ctx.translate(canvas.width / 2, canvas.height / 2); // キャンバスの中心へ移動
+					ctx.rotate((rotationAngle * Math.PI) / 180); // 回転
+				
+					// 画像を回転させた後、キャンバスの中心に描画
+					const x = -image.width / 2;
+					const y = -image.height / 2;
+					// 画像を描画
+					ctx.drawImage(image, x, y, image.width, image.height);
+				
+					ctx.restore(); // 元の状態を復元
+				}
+			
+				// 左回転
+				$backContent.find('#rotateLeftButton').off('click').on('click', function() {
+					rotationAngle -= 90; // 90度左回転
+					drawImageWithRotation();
+				});
+				// 右回転
+				$backContent.find('#rotateRightButton').off('click').on('click', function() {
+					rotationAngle += 90; // 90度右回転
+					drawImageWithRotation();
+				});
+			}
 		}
 		// カレンダーを表示
 		calendar.render();
@@ -415,5 +454,5 @@ function limit_display(content_name) {
 		console.log('全ての要素を表示します');
 		$editContainer.children().show();
 	}
-
 }
+
